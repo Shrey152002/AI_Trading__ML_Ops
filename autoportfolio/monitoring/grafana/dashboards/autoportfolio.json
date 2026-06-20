@@ -1,0 +1,72 @@
+{
+  "title": "AutoPortfolio Overview",
+  "uid": "autoportfolio-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Sharpe Ratio by Portfolio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "portfolio_sharpe_ratio", "legendFormat": "{{portfolio}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Daily Return by Portfolio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "portfolio_daily_return", "legendFormat": "{{portfolio}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Drift Score by Portfolio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "model_drift_score", "legendFormat": "{{portfolio}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Data Freshness (hours)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "data_freshness_hours", "legendFormat": "{{portfolio}}" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "API Prediction Latency (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, rate(api_prediction_latency_seconds_bucket[5m]))" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "API Requests by Endpoint",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "sum(rate(api_requests_total[5m])) by (endpoint, status)", "legendFormat": "{{endpoint}} {{status}}" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Training Runs Outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "sum(rate(training_runs_total[1d])) by (portfolio, algorithm, outcome)", "legendFormat": "{{portfolio}}-{{algorithm}}-{{outcome}}" }
+      ]
+    }
+  ]
+}

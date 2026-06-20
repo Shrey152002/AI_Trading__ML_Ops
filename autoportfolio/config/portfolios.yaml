@@ -1,0 +1,74 @@
+# Portfolio universe definitions for AutoPortfolio.
+# Each entry feeds data.ingestion, envs.portfolio_env, and api request validation.
+
+portfolios:
+  nifty50:
+    display_name: "NIFTY 50 Core"
+    tickers:
+      - RELIANCE.NS
+      - TCS.NS
+      - HDFCBANK.NS
+      - ICICIBANK.NS
+      - INFY.NS
+      - HINDUNILVR.NS
+      - ITC.NS
+      - SBIN.NS
+      - BHARTIARTL.NS
+      - KOTAKBANK.NS
+      - LT.NS
+      - AXISBANK.NS
+      - BAJFINANCE.NS
+      - HCLTECH.NS
+      - ASIANPAINT.NS
+      - MARUTI.NS
+      - SUNPHARMA.NS
+      - TITAN.NS
+      - ULTRACEMCO.NS
+      - WIPRO.NS
+    rebalance_frequency: weekly
+    risk_appetite: moderate
+    capital: 1000000
+
+  banking:
+    display_name: "Banking & Financials"
+    tickers:
+      - HDFCBANK.NS
+      - ICICIBANK.NS
+      - KOTAKBANK.NS
+      - AXISBANK.NS
+      - SBIN.NS
+    rebalance_frequency: weekly
+    risk_appetite: moderate
+    capital: 500000
+
+  it:
+    display_name: "IT Services"
+    tickers:
+      - TCS.NS
+      - INFY.NS
+      - WIPRO.NS
+      - HCLTECH.NS
+      - TECHM.NS
+    rebalance_frequency: weekly
+    risk_appetite: aggressive
+    capital: 500000
+
+  energy:
+    display_name: "Energy & Power"
+    tickers:
+      - RELIANCE.NS
+      - ONGC.NS
+      - NTPC.NS
+      - POWERGRID.NS
+      - BPCL.NS
+    rebalance_frequency: monthly
+    risk_appetite: conservative
+    capital: 500000
+
+# Global defaults applied unless overridden above.
+defaults:
+  episode_length: 252
+  train_window_years: 3
+  val_window_days: 120
+  test_window_days: 60
+  data_max_staleness_days: 2
