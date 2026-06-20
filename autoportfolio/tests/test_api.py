@@ -112,3 +112,55 @@ def test_history_endpoint_returns_logged_predictions(client):
     body = response.json()
     assert len(body["history"]) == 1
     assert set(body["history"][0]["allocation"].keys()) == set(TICKERS)
+
+
+def test_portfolios_endpoint_lists_all_configured_portfolios(client):
+    response = client.get("/portfolios")
+    assert response.status_code == 200
+    body = response.json()
+    names = {p["name"] for p in body["portfolios"]}
+    assert names == {"nifty50", "banking", "it", "energy"}
+    banking = next(p for p in body["portfolios"] if p["name"] == "banking")
+    assert banking["tickers"] == TICKERS
+    assert banking["risk_appetite"] == "moderate"
+
+
+def test_pipeline_runs_endpoint_empty_for_never_run_portfolio(client, monkeypatch, tmp_path):
+    import scheduler.pipeline as pipeline_module
+
+    monkeypatch.setattr(pipeline_module, "PIPELINE_RUNS_LOG", tmp_path / "pipeline_runs.json")
+
+    response = client.get(f"/pipeline/runs/{PORTFOLIO_ID}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["portfolio_id"] == PORTFOLIO_ID
+    assert body["runs"] == []
+
+
+def test_pipeline_runs_endpoint_returns_matching_records_reverse_chronological(client, monkeypatch, tmp_path):
+    import json
+
+    import scheduler.pipeline as pipeline_module
+
+    runs_log = tmp_path / "pipeline_runs.json"
+    runs_log.write_text(
+        json.dumps(
+            [
+                {"portfolio": PORTFOLIO_ID, "started_at": "t1", "steps": [{"step": "ingest"}], "status": "completed", "finished_at": "t1f"},
+                {"portfolio": "it", "started_at": "t2", "steps": [{"step": "ingest"}], "status": "completed", "finished_at": "t2f"},
+                {"portfolio": PORTFOLIO_ID, "started_at": "t3", "steps": [{"step": "drift_check", "needs_retrain": False}], "status": "skipped_healthy", "finished_at": "t3f"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(pipeline_module, "PIPELINE_RUNS_LOG", runs_log)
+
+    response = client.get(f"/pipeline/runs/{PORTFOLIO_ID}")
+    assert response.status_code == 200
+    body = response.json()
+    assert [r["started_at"] for r in body["runs"]] == ["t3", "t1"]
+
+
+def test_pipeline_runs_endpoint_unknown_portfolio_returns_404(client):
+    response = client.get("/pipeline/runs/does_not_exist")
+    assert response.status_code == 404

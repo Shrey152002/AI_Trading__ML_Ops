@@ -8,6 +8,7 @@ from pathlib import Path
 import mlflow
 
 from agents import AGENT_REGISTRY
+from monitoring.metrics import training_runs_total
 from training.benchmark import benchmark_models, compute_metrics, run_episode
 from training.env_utils import build_envs
 from training.hyperopt import run_hyperopt
@@ -47,42 +48,51 @@ def train_portfolio(
     run_results = []
 
     for algo_name, agent_class in AGENT_REGISTRY.items():
-        with mlflow.start_run(run_name=f"{portfolio_name}-{algo_name}") as run:
-            mlflow.set_tags({"portfolio": portfolio_name, "algorithm": algo_name})
-            logger.info("Starting hyperopt for %s on portfolio %s", algo_name, portfolio_name)
+        try:
+            with mlflow.start_run(run_name=f"{portfolio_name}-{algo_name}") as run:
+                mlflow.set_tags({"portfolio": portfolio_name, "algorithm": algo_name})
+                logger.info("Starting hyperopt for %s on portfolio %s", algo_name, portfolio_name)
 
-            best_params, best_val_sharpe = run_hyperopt(
-                algo_name, agent_class, train_env, val_env, n_trials=n_trials
-            )
-            mlflow.log_params({f"hp_{k}": v for k, v in best_params.items()})
-            mlflow.log_metric("val_sharpe", best_val_sharpe)
+                best_params, best_val_sharpe = run_hyperopt(
+                    algo_name, agent_class, train_env, val_env, n_trials=n_trials
+                )
+                mlflow.log_params({f"hp_{k}": v for k, v in best_params.items()})
+                mlflow.log_metric("val_sharpe", best_val_sharpe)
 
-            agent = agent_class(hyperparams=best_params)
-            start_time = time.time()
-            agent.train(train_env, total_timesteps=total_timesteps, mlflow_run_id=run.info.run_id)
-            training_time = time.time() - start_time
+                agent = agent_class(hyperparams=best_params)
+                start_time = time.time()
+                agent.train(train_env, total_timesteps=total_timesteps, mlflow_run_id=run.info.run_id)
+                training_time = time.time() - start_time
 
-            test_returns = run_episode(agent, test_env)
-            test_metrics = compute_metrics(test_returns)
-            mlflow.log_metrics(test_metrics)
-            mlflow.log_metric("training_time_seconds", training_time)
+                test_returns = run_episode(agent, test_env)
+                test_metrics = compute_metrics(test_returns)
+                mlflow.log_metrics(test_metrics)
+                mlflow.log_metric("training_time_seconds", training_time)
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                model_path = Path(tmp_dir) / f"{algo_name.lower()}_model.zip"
-                agent.save(str(model_path))
-                mlflow.log_artifact(str(model_path), artifact_path="model")
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    model_path = Path(tmp_dir) / f"{algo_name.lower()}_model.zip"
+                    agent.save(str(model_path))
+                    mlflow.log_artifact(str(model_path), artifact_path="model")
 
-            trained_agents[algo_name] = agent
-            run_results.append(
-                {
-                    "algorithm": algo_name,
-                    "run_id": run.info.run_id,
-                    "best_params": best_params,
-                    "training_time_seconds": training_time,
-                    **test_metrics,
-                }
-            )
-            logger.info("Finished %s for %s: %s", algo_name, portfolio_name, test_metrics)
+                trained_agents[algo_name] = agent
+                run_results.append(
+                    {
+                        "algorithm": algo_name,
+                        "run_id": run.info.run_id,
+                        "best_params": best_params,
+                        "training_time_seconds": training_time,
+                        **test_metrics,
+                    }
+                )
+                logger.info("Finished %s for %s: %s", algo_name, portfolio_name, test_metrics)
+
+            training_runs_total.labels(portfolio=portfolio_name, algorithm=algo_name, outcome="completed").inc()
+        except Exception:
+            training_runs_total.labels(portfolio=portfolio_name, algorithm=algo_name, outcome="failed").inc()
+            logger.exception("Training failed for %s on portfolio %s", algo_name, portfolio_name)
+
+    if not trained_agents:
+        raise RuntimeError(f"All agents failed to train for portfolio '{portfolio_name}'")
 
     ranking = benchmark_models(trained_agents, test_env, portfolio_name)
     winner_algo = ranking.iloc[0]["algorithm"]

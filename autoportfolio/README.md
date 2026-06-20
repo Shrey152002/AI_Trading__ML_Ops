@@ -49,6 +49,7 @@ autoportfolio/
 ├── drift/           rolling live-Sharpe drift detection
 ├── scheduler/        nightly pipeline orchestration
 ├── api/             FastAPI serving layer (thin wrapper over inference/)
+├── frontend/        Next.js interactive dashboard (overview, recommendations, history, pipeline trigger)
 ├── reports/         Jinja2 HTML evaluation reports
 ├── monitoring/      Prometheus metrics + Grafana provisioning
 ├── config/          portfolio definitions (config/portfolios.yaml)
@@ -128,6 +129,19 @@ curl -X POST localhost:8000/portfolio/recommendation \
 
 Other endpoints: `GET /portfolio/{id}/status`, `GET /portfolio/{id}/history`,
 `POST /pipeline/run`, `GET /health`, `GET /metrics` (Prometheus exposition).
+
+## Dashboard
+
+`frontend/` is an interactive Next.js dashboard over the API — portfolio overview cards with
+live status, an interactive recommendation form with charted results, allocation history, and a
+button to trigger retraining, all without touching curl or Swagger.
+
+```bash
+# with the API running and CORS_ALLOW_ORIGINS=http://localhost:3001 set
+cd frontend
+npm install
+npm run dev   # http://localhost:3001
+```
 
 ## Data versioning
 

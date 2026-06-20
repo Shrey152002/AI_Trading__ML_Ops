@@ -15,6 +15,7 @@ from config import get_portfolio
 from data.ingestion import load_cached_portfolio_data
 from envs.portfolio_env import softmax
 from feature_store.store import get_latest_for_training
+from monitoring.metrics import model_drift_score, portfolio_daily_return, portfolio_sharpe_ratio
 from registry.model_registry import get_production_model
 from training.benchmark import compute_metrics
 
@@ -89,6 +90,12 @@ def check_drift(
     drift_threshold = benchmark_sharpe * threshold_ratio
     drift_triggered = live_sharpe < drift_threshold
     action = "retrain_triggered" if drift_triggered else "healthy"
+
+    drift_ratio = (live_sharpe / benchmark_sharpe) if benchmark_sharpe > 0 else 0.0
+    portfolio_sharpe_ratio.labels(portfolio=portfolio_name).set(benchmark_sharpe)
+    model_drift_score.labels(portfolio=portfolio_name).set(drift_ratio)
+    if len(live_returns) > 0:
+        portfolio_daily_return.labels(portfolio=portfolio_name).set(float(live_returns[-1]))
 
     _append_drift_log(
         {

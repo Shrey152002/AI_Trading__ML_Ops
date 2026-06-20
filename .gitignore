@@ -1,4 +1,5 @@
 .claude/
+.mcp.json
 
 # Local DVC remote storage for autoportfolio's versioned datasets (sibling to autoportfolio/
 # since DVC remotes can't live inside the repo they're versioning data for in this setup).

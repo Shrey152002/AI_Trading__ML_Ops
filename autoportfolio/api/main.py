@@ -8,13 +8,17 @@ import time
 
 import mlflow
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from api.schemas import (
     HealthResponse,
     PipelineRunRequest,
     PipelineRunResponse,
+    PipelineRunsResponse,
+    PortfolioConfigResponse,
     PortfolioHistoryResponse,
+    PortfolioListResponse,
     PortfolioStatusResponse,
     RecommendationRequest,
     RecommendationResponse,
@@ -22,12 +26,19 @@ from api.schemas import (
 from config import get_portfolio, list_portfolio_names
 from inference import service as inference_service
 from monitoring.metrics import api_prediction_latency_seconds, api_requests_total, export_metrics
-from scheduler.pipeline import run_nightly_pipeline
+from scheduler.pipeline import read_pipeline_runs, run_nightly_pipeline
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="AutoPortfolio API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("CORS_ALLOW_ORIGINS", "http://localhost:3001").split(","),
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 
 @app.middleware("http")
@@ -88,6 +99,33 @@ def trigger_pipeline_run(request: PipelineRunRequest, background_tasks: Backgrou
         status="scheduled",
         message="Nightly pipeline run started in the background.",
     )
+
+
+@app.get("/portfolios", response_model=PortfolioListResponse)
+def list_portfolios():
+    configs = [get_portfolio(name) for name in list_portfolio_names()]
+    return PortfolioListResponse(
+        portfolios=[
+            PortfolioConfigResponse(
+                name=c["name"],
+                display_name=c["display_name"],
+                tickers=c["tickers"],
+                risk_appetite=c["risk_appetite"],
+                capital=c["capital"],
+                rebalance_frequency=c["rebalance_frequency"],
+            )
+            for c in configs
+        ]
+    )
+
+
+@app.get("/pipeline/runs/{portfolio_id}", response_model=PipelineRunsResponse)
+def get_pipeline_runs(portfolio_id: str):
+    try:
+        get_portfolio(portfolio_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return PipelineRunsResponse(portfolio_id=portfolio_id, runs=read_pipeline_runs(portfolio_id))
 
 
 @app.get("/health", response_model=HealthResponse)

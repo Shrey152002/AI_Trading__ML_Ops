@@ -38,6 +38,18 @@ def _append_pipeline_run(record: dict) -> None:
     PIPELINE_RUNS_LOG.write_text(json.dumps(runs, indent=2), encoding="utf-8")
 
 
+def read_pipeline_runs(portfolio_name: str, limit: int = 10) -> list[dict]:
+    """Returns up to `limit` most recent pipeline runs for portfolio_name, newest first."""
+    if not PIPELINE_RUNS_LOG.exists():
+        return []
+    try:
+        runs = json.loads(PIPELINE_RUNS_LOG.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    matching = [r for r in runs if r.get("portfolio") == portfolio_name]
+    return list(reversed(matching))[:limit]
+
+
 def run_nightly_pipeline(
     portfolio_name: str,
     total_timesteps: int = 100_000,

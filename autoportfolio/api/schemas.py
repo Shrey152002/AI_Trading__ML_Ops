@@ -64,3 +64,35 @@ class HealthResponse(BaseModel):
     status: str
     portfolios: list[str]
     mlflow: str
+
+
+class PortfolioConfigResponse(BaseModel):
+    name: str
+    display_name: str
+    tickers: list[str]
+    risk_appetite: Literal["conservative", "moderate", "aggressive"]
+    capital: float
+    rebalance_frequency: str
+
+
+class PortfolioListResponse(BaseModel):
+    portfolios: list[PortfolioConfigResponse]
+
+
+class PipelineRunStep(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    step: str
+
+
+class PipelineRunRecord(BaseModel):
+    portfolio: str
+    started_at: str
+    steps: list[PipelineRunStep]
+    status: str
+    finished_at: Optional[str] = None
+
+
+class PipelineRunsResponse(BaseModel):
+    portfolio_id: str
+    runs: list[PipelineRunRecord]

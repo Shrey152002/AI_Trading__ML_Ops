@@ -13,6 +13,12 @@ from data.ingestion import load_cached_portfolio_data
 from drift.detector import compute_live_returns
 from envs.portfolio_env import softmax
 from feature_store.store import get_latest_observation, log_prediction, read_predictions
+from monitoring.metrics import (
+    data_freshness_hours as data_freshness_hours_metric,
+    model_drift_score,
+    portfolio_daily_return,
+    portfolio_sharpe_ratio,
+)
 from registry.model_registry import get_production_model
 from training.benchmark import compute_metrics
 
@@ -32,12 +38,25 @@ def _load_recent_close_prices(portfolio_name: str, tickers: list[str], lookback:
 
 
 def _confidence_and_drift_ratio(portfolio_id: str, agent, benchmark_sharpe: float) -> float:
+    """Computes the live-Sharpe/benchmark-Sharpe ratio and, as a side effect, refreshes the
+    Prometheus gauges for this portfolio — every recommendation/status call keeps them current,
+    not just the nightly drift check.
+    """
     try:
         live_returns = compute_live_returns(portfolio_id, agent, window=DRIFT_WINDOW_DAYS)
         live_sharpe = compute_metrics(live_returns)["sharpe"]
     except ValueError:
+        live_returns = np.array([])
         live_sharpe = benchmark_sharpe
-    return float(live_sharpe / benchmark_sharpe) if benchmark_sharpe > 0 else 0.0
+
+    drift_ratio = float(live_sharpe / benchmark_sharpe) if benchmark_sharpe > 0 else 0.0
+
+    portfolio_sharpe_ratio.labels(portfolio=portfolio_id).set(benchmark_sharpe)
+    model_drift_score.labels(portfolio=portfolio_id).set(drift_ratio)
+    if len(live_returns) > 0:
+        portfolio_daily_return.labels(portfolio=portfolio_id).set(float(live_returns[-1]))
+
+    return drift_ratio
 
 
 def _build_explanation(recommended: dict, current: dict) -> str:
@@ -105,6 +124,7 @@ def get_status(portfolio_id: str) -> dict:
     if last_date.tzinfo is None:
         last_date = last_date.replace(tzinfo=timezone.utc)
     freshness_hours = (datetime.now(timezone.utc) - last_date).total_seconds() / 3600
+    data_freshness_hours_metric.labels(portfolio=portfolio_id).set(freshness_hours)
 
     return {
         "portfolio_id": portfolio_id,
