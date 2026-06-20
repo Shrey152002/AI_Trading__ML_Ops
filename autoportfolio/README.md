@@ -15,31 +15,13 @@ degrades.
 
 ## Architecture
 
-```
-yfinance ──▶ ingestion ──▶ validation ──▶ feature_store (versioned, DVC-tracked)
-   (data/raw/, DVC)        (hard gate)         │
-                                 ┌───────────────┴───────────────┐
-                                 ▼                                ▼
-                          training/env_utils                inference/service
-                                 │                                │
-                  ┌──────────────┼──────────────┐                 │
-                  ▼              ▼              ▼                 │
-                PPO            A2C        SAC / DDPG               │
-          (Optuna-tuned, MLflow-tracked, Gymnasium env)            │
-                  └──────────────┴──────────────┘                 │
-                                 ▼                                 │
-                       benchmark (Sharpe/Calmar/DD)                │
-                                 ▼                                 │
-                 MLflow Model Registry (versioned, promotable) ◀───┘
-                                 │
-                  ┌──────────────┼──────────────────────┐
-                  ▼              ▼                        ▼
-            api/main.py    drift detector            HTML report (Jinja2)
-          (thin HTTP layer) (rolling Sharpe vs               
-                  │          benchmark, retrain trigger)
-                  ▼
-         prediction log ──▶ feature_store ──▶ Prometheus /metrics ──▶ Grafana
-```
+**Training pipeline** — data ingestion through to a registered, versioned model:
+
+![Training pipeline](docs/images/training_pipeline.png)
+
+**Serving & monitoring pipeline** — how the promoted model gets served, watched for drift, and observed:
+
+![Serving & monitoring pipeline](docs/images/serving_monitoring_pipeline.png)
 
 `feature_store/` is the single read path both training and inference use — neither reaches
 into raw ingestion/computation directly, so they can't silently diverge on what feature set a
