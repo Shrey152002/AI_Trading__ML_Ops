@@ -1,3 +1,5 @@
+import { AlertTriangle } from "lucide-react";
+
 export function ErrorState({
   message,
   onRetry,
@@ -7,7 +9,10 @@ export function ErrorState({
 }) {
   return (
     <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-      <p className="font-medium">Something went wrong</p>
+      <p className="flex items-center gap-1.5 font-medium">
+        <AlertTriangle className="h-4 w-4" />
+        Something went wrong
+      </p>
       <p className="mt-1 text-red-700">{message}</p>
       {onRetry && (
         <button

@@ -13,6 +13,7 @@ from fastapi.responses import Response
 
 from api.schemas import (
     HealthResponse,
+    PipelineLogsResponse,
     PipelineRunRequest,
     PipelineRunResponse,
     PipelineRunsResponse,
@@ -25,11 +26,13 @@ from api.schemas import (
 )
 from config import get_portfolio, list_portfolio_names
 from inference import service as inference_service
+from monitoring.log_buffer import get_recent_logs, install_log_capture
 from monitoring.metrics import api_prediction_latency_seconds, api_requests_total, export_metrics
 from scheduler.pipeline import read_pipeline_runs, run_nightly_pipeline
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+install_log_capture()
 
 app = FastAPI(title="AutoPortfolio API", version="1.0.0")
 
@@ -126,6 +129,11 @@ def get_pipeline_runs(portfolio_id: str):
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return PipelineRunsResponse(portfolio_id=portfolio_id, runs=read_pipeline_runs(portfolio_id))
+
+
+@app.get("/pipeline/logs", response_model=PipelineLogsResponse)
+def get_pipeline_logs(since: int = 0):
+    return PipelineLogsResponse(entries=get_recent_logs(since))
 
 
 @app.get("/health", response_model=HealthResponse)

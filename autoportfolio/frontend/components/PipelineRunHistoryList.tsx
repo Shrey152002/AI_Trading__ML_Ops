@@ -2,42 +2,45 @@
 
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AlertCircle, CheckCircle2, MinusCircle } from "lucide-react";
+import clsx from "clsx";
 
 import { getPipelineRuns } from "@/lib/api/endpoints";
 import { queryKeys } from "@/lib/queryKeys";
 import type { PipelineRunRecord } from "@/lib/api/types";
+import { PipelineStepper } from "./PipelineStepper";
 
-const STATUS_STYLES: Record<string, string> = {
-  completed: "text-emerald-700",
-  skipped_healthy: "text-slate-500",
-  aborted: "text-red-700",
-  error: "text-red-700",
+const STATUS_CONFIG: Record<string, { text: string; className: string; icon: typeof CheckCircle2 }> = {
+  completed: { text: "Completed — model retrained", className: "text-emerald-700", icon: CheckCircle2 },
+  skipped_healthy: { text: "Skipped — model already healthy", className: "text-slate-500", icon: MinusCircle },
+  aborted: { text: "Aborted — data validation failed", className: "text-red-700", icon: AlertCircle },
+  error: { text: "Error", className: "text-red-700", icon: AlertCircle },
 };
 
 function RunRow({ run }: { run: PipelineRunRecord }) {
+  const config = STATUS_CONFIG[run.status] ?? {
+    text: run.status.replace(/_/g, " "),
+    className: "text-slate-700",
+    icon: CheckCircle2,
+  };
+  const Icon = config.icon;
+  const trainStep = run.steps.find((s) => s.step === "train");
+  const winner = trainStep && typeof trainStep.winner === "string" ? trainStep.winner : null;
+
   return (
     <li className="rounded-md border border-slate-200 p-3 text-sm">
       <div className="flex items-center justify-between">
-        <span className={STATUS_STYLES[run.status] ?? "text-slate-700"}>
-          {run.status.replace(/_/g, " ")}
+        <span className={clsx("flex items-center gap-1.5 font-medium", config.className)}>
+          <Icon className="h-4 w-4" />
+          {config.text}
+          {winner && <span className="font-normal text-slate-500">(winner: {winner})</span>}
         </span>
         <span className="text-xs text-slate-400">
           {new Date(run.started_at).toLocaleString()}
         </span>
       </div>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {run.steps.map((step, idx) => (
-          <span
-            key={idx}
-            className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600"
-            title={JSON.stringify(step)}
-          >
-            {step.step}
-            {step.step === "train" && typeof step.winner === "string"
-              ? `: ${step.winner}`
-              : ""}
-          </span>
-        ))}
+      <div className="mt-2">
+        <PipelineStepper steps={run.steps} />
       </div>
     </li>
   );

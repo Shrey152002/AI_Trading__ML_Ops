@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { RecommendationRequest, RiskAppetite } from "@/lib/api/types";
 import { tickerLabel } from "@/lib/format";
+import { InfoTooltip } from "./InfoTooltip";
 
 export function RecommendationForm({
   portfolioId,
@@ -50,8 +51,14 @@ export function RecommendationForm({
       className="space-y-4"
     >
       <div>
-        <p className="text-xs font-medium text-slate-600">
+        <p className="flex items-center gap-1 text-xs font-medium text-slate-600">
           Current holdings (weights, total: {(totalWeight * 100).toFixed(0)}%)
+          <InfoTooltip title="Current holdings">
+            What you hold right now, as a fraction of this portfolio (should sum to
+            100%). The model compares its recommendation against these to explain what
+            it would change — e.g. <em>&quot;increase HDFCBANK by 6.8%&quot;</em>. It
+            does not affect the recommended allocation itself, only the explanation.
+          </InfoTooltip>
         </p>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {tickers.map((t) => (
@@ -75,7 +82,16 @@ export function RecommendationForm({
 
       <div className="grid grid-cols-2 gap-3">
         <label className="text-xs font-medium text-slate-600">
-          Risk appetite
+          <span className="flex items-center gap-1">
+            Risk appetite
+            <InfoTooltip title="Risk appetite">
+              This portfolio was already configured with a risk profile when it was set
+              up. Changing it here is accepted by the API, but{" "}
+              <strong>doesn&apos;t currently change the model&apos;s output</strong> — the
+              RL agent isn&apos;t yet conditioned on this field. It&apos;s wired up for a
+              future, risk-aware version of the model.
+            </InfoTooltip>
+          </span>
           <select
             value={riskAppetite}
             onChange={(e) => setRiskAppetite(e.target.value as RiskAppetite)}
@@ -87,7 +103,14 @@ export function RecommendationForm({
           </select>
         </label>
         <label className="text-xs font-medium text-slate-600">
-          Capital (INR)
+          <span className="flex items-center gap-1">
+            Capital (INR)
+            <InfoTooltip title="Capital">
+              The amount you&apos;d allocate. Required by the API (must be positive), but
+              the model currently recommends <strong>percentage weights only</strong> — it
+              doesn&apos;t yet use this to size positions in rupee terms.
+            </InfoTooltip>
+          </span>
           <input
             type="number"
             min={1}
@@ -99,7 +122,15 @@ export function RecommendationForm({
       </div>
 
       <label className="block text-xs font-medium text-slate-600">
-        Sector constraints (comma separated, optional)
+        <span className="flex items-center gap-1">
+          Sector constraints (comma separated, optional)
+          <InfoTooltip title="Sector constraints">
+            Free-text constraints like <em>exclude_energy</em> or{" "}
+            <em>max_single_30pct</em>. Accepted by the API but{" "}
+            <strong>not yet enforced</strong> by the model — a placeholder for a future
+            constraint-aware version of the allocator.
+          </InfoTooltip>
+        </span>
         <input
           type="text"
           value={sectorConstraintsText}

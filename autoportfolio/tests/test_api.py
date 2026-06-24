@@ -164,3 +164,34 @@ def test_pipeline_runs_endpoint_returns_matching_records_reverse_chronological(c
 def test_pipeline_runs_endpoint_unknown_portfolio_returns_404(client):
     response = client.get("/pipeline/runs/does_not_exist")
     assert response.status_code == 404
+
+
+def test_pipeline_logs_endpoint_returns_captured_entries(client):
+    import logging
+
+    import monitoring.log_buffer as log_buffer_module
+
+    log_buffer_module.install_log_capture()
+    logging.getLogger("scheduler.pipeline").info("test pipeline log line")
+
+    response = client.get("/pipeline/logs")
+    assert response.status_code == 200
+    body = response.json()
+    assert any(e["message"] == "test pipeline log line" for e in body["entries"])
+
+
+def test_pipeline_logs_endpoint_respects_since_cursor(client):
+    import logging
+
+    import monitoring.log_buffer as log_buffer_module
+
+    log_buffer_module.install_log_capture()
+    logging.getLogger("training.trainer").info("first")
+    first_seq = max(e["seq"] for e in client.get("/pipeline/logs").json()["entries"])
+    logging.getLogger("training.trainer").info("second")
+
+    response = client.get(f"/pipeline/logs?since={first_seq}")
+    assert response.status_code == 200
+    messages = [e["message"] for e in response.json()["entries"]]
+    assert "second" in messages
+    assert "first" not in messages

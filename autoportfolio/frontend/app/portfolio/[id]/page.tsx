@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { History, PieChart, Workflow, Wand2 } from "lucide-react";
 
 import { getHistory, getRecommendation, getStatus, listPortfolios } from "@/lib/api/endpoints";
 import { queryKeys } from "@/lib/queryKeys";
@@ -20,6 +21,8 @@ import { ExplanationPanel } from "@/components/ExplanationPanel";
 import { HistoryChart } from "@/components/HistoryChart";
 import { PipelineRunButton } from "@/components/PipelineRunButton";
 import { PipelineRunHistoryList } from "@/components/PipelineRunHistoryList";
+import { LiveLogPanel } from "@/components/LiveLogPanel";
+import { InfoTooltip } from "@/components/InfoTooltip";
 
 const PENDING_RUN_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -30,6 +33,7 @@ export default function PortfolioDetailPage() {
 
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
   const [pendingSince, setPendingSince] = useState<string | null>(null);
+  const [logPanelOpen, setLogPanelOpen] = useState(false);
   const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const portfoliosQuery = useQuery({
@@ -58,6 +62,7 @@ export default function PortfolioDetailPage() {
   const handlePipelineTriggered = useCallback(
     (submittedAt: string) => {
       setPendingSince(submittedAt);
+      setLogPanelOpen(true);
       if (pendingTimeoutRef.current) clearTimeout(pendingTimeoutRef.current);
       pendingTimeoutRef.current = setTimeout(() => setPendingSince(null), PENDING_RUN_TIMEOUT_MS);
     },
@@ -118,21 +123,49 @@ export default function PortfolioDetailPage() {
           onRetry={() => statusQuery.refetch()}
         />
       ) : statusQuery.data ? (
-        <dl className="grid grid-cols-2 gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-4">
           <div>
-            <dt className="text-xs text-slate-400">Algorithm</dt>
+            <dt className="flex items-center gap-1 text-xs text-slate-400">
+              Algorithm
+              <InfoTooltip title="Algorithm">
+                Which of the four RL algorithms (PPO, A2C, SAC, DDPG) won the most recent
+                training run and is currently serving recommendations for this portfolio.
+              </InfoTooltip>
+            </dt>
             <dd className="font-medium">{statusQuery.data.algorithm}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-400">Sharpe (benchmark)</dt>
+            <dt className="flex items-center gap-1 text-xs text-slate-400">
+              Sharpe (benchmark)
+              <InfoTooltip title="Sharpe (benchmark)">
+                Risk-adjusted return (return ÷ volatility) this model achieved on held-out
+                test data during training. Higher is better — this is the number the live
+                model is compared against to detect drift.
+              </InfoTooltip>
+            </dt>
             <dd className="font-medium">{statusQuery.data.sharpe.toFixed(3)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-400">Drift score</dt>
+            <dt className="flex items-center gap-1 text-xs text-slate-400">
+              Drift score
+              <InfoTooltip title="Drift score">
+                Ratio of the model&apos;s recent live Sharpe to its benchmark Sharpe.{" "}
+                <strong>1.0</strong> means performing exactly as well as in training; a
+                score below <strong>~0.7</strong> automatically triggers retraining on the
+                next pipeline run.
+              </InfoTooltip>
+            </dt>
             <dd className="font-medium">{statusQuery.data.drift_score.toFixed(3)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-400">Data freshness</dt>
+            <dt className="flex items-center gap-1 text-xs text-slate-400">
+              Data freshness
+              <InfoTooltip title="Data freshness">
+                Hours since the most recent cached price data point. Large values usually
+                just mean markets have been closed (weekends/holidays) — not that
+                something is broken.
+              </InfoTooltip>
+            </dt>
             <dd className="font-medium">{statusQuery.data.data_freshness_hours.toFixed(1)}h</dd>
           </div>
         </dl>
@@ -140,8 +173,11 @@ export default function PortfolioDetailPage() {
 
       {/* Recommendation */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold">Request a recommendation</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+            <Wand2 className="h-4 w-4 text-slate-400" />
+            Request a recommendation
+          </h2>
           <div className="mt-3">
             <RecommendationForm
               portfolioId={portfolioId}
@@ -162,8 +198,11 @@ export default function PortfolioDetailPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold">Recommended allocation</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+            <PieChart className="h-4 w-4 text-slate-400" />
+            Recommended allocation
+          </h2>
           {recommendation ? (
             <div className="mt-2 space-y-4">
               <AllocationPieChart allocation={recommendation.recommended_allocation} />
@@ -182,8 +221,11 @@ export default function PortfolioDetailPage() {
       </section>
 
       {/* History */}
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold">Allocation history</h2>
+      <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+          <History className="h-4 w-4 text-slate-400" />
+          Allocation history
+        </h2>
         <div className="mt-2">
           {historyQuery.isLoading ? (
             <Skeleton className="h-64" />
@@ -202,8 +244,11 @@ export default function PortfolioDetailPage() {
 
       {/* Pipeline */}
       {!noModelYet && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold">Pipeline runs</h2>
+        <section className="rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+            <Workflow className="h-4 w-4 text-slate-400" />
+            Pipeline runs
+          </h2>
           <div className="mt-2">
             <PipelineRunButton
               portfolioId={portfolioId}
@@ -220,6 +265,8 @@ export default function PortfolioDetailPage() {
           </div>
         </section>
       )}
+
+      <LiveLogPanel open={logPanelOpen} onOpenChange={setLogPanelOpen} />
     </div>
   );
 }

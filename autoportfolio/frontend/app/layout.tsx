@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LineChart } from "lucide-react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -34,11 +35,16 @@ export default function RootLayout({
         <Providers>
           <HealthBanner />
           <header className="border-b border-slate-200 bg-white">
-            <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-              <Link href="/" className="text-sm font-semibold tracking-tight">
-                AutoPortfolio
+            <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-3">
+              <Link href="/" className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900">
+                  <LineChart className="h-4 w-4 text-white" />
+                </span>
+                <span className="text-sm font-semibold tracking-tight text-slate-900">
+                  AutoPortfolio
+                </span>
               </Link>
-              <span className="text-xs text-slate-400">
+              <span className="hidden text-xs text-slate-400 sm:inline">
                 RL portfolio allocation — recommendations, not trades
               </span>
             </div>

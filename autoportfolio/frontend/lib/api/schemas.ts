@@ -74,3 +74,15 @@ export const pipelineRunsResponseSchema = z.object({
   portfolio_id: z.string(),
   runs: z.array(pipelineRunRecordSchema),
 });
+
+export const pipelineLogEntrySchema = z.object({
+  seq: z.number(),
+  timestamp: z.string(),
+  level: z.string(),
+  logger: z.string(),
+  message: z.string(),
+});
+
+export const pipelineLogsResponseSchema = z.object({
+  entries: z.array(pipelineLogEntrySchema),
+});

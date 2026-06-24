@@ -1,5 +1,6 @@
 import { formatPercent } from "@/lib/format";
 import type { RecommendationResponse } from "@/lib/api/types";
+import { InfoTooltip } from "./InfoTooltip";
 
 export function ExplanationPanel({ result }: { result: RecommendationResponse }) {
   return (
@@ -8,7 +9,15 @@ export function ExplanationPanel({ result }: { result: RecommendationResponse })
 
       <div>
         <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>Confidence</span>
+          <span className="flex items-center gap-1">
+            Confidence
+            <InfoTooltip title="Confidence">
+              How closely the model&apos;s recent live performance matches its
+              training-time benchmark, capped at 100%. This is <strong>not</strong> a
+              measure of certainty about this specific allocation — it drops when the
+              live model has drifted from how it performed during training.
+            </InfoTooltip>
+          </span>
           <span>{formatPercent(result.confidence, 0)}</span>
         </div>
         <div className="mt-1 h-2 rounded-full bg-slate-100">

@@ -96,3 +96,15 @@ class PipelineRunRecord(BaseModel):
 class PipelineRunsResponse(BaseModel):
     portfolio_id: str
     runs: list[PipelineRunRecord]
+
+
+class PipelineLogEntry(BaseModel):
+    seq: int
+    timestamp: str
+    level: str
+    logger: str
+    message: str
+
+
+class PipelineLogsResponse(BaseModel):
+    entries: list[PipelineLogEntry]

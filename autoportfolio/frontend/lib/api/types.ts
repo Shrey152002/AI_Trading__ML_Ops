@@ -87,3 +87,15 @@ export interface PipelineRunsResponse {
   portfolio_id: string;
   runs: PipelineRunRecord[];
 }
+
+export interface PipelineLogEntry {
+  seq: number;
+  timestamp: string;
+  level: string;
+  logger: string;
+  message: string;
+}
+
+export interface PipelineLogsResponse {
+  entries: PipelineLogEntry[];
+}
