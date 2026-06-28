@@ -14,6 +14,7 @@ from fastapi.responses import Response
 from api.schemas import (
     HealthResponse,
     PipelineLogsResponse,
+    PipelineProgressResponse,
     PipelineRunRequest,
     PipelineRunResponse,
     PipelineRunsResponse,
@@ -28,6 +29,7 @@ from config import get_portfolio, list_portfolio_names
 from inference import service as inference_service
 from monitoring.log_buffer import get_recent_logs, install_log_capture
 from monitoring.metrics import api_prediction_latency_seconds, api_requests_total, export_metrics
+from monitoring.progress_state import get_progress
 from scheduler.pipeline import read_pipeline_runs, run_nightly_pipeline
 
 logger = logging.getLogger(__name__)
@@ -96,6 +98,7 @@ def trigger_pipeline_run(request: PipelineRunRequest, background_tasks: Backgrou
         request.portfolio_id,
         total_timesteps=request.total_timesteps,
         n_trials=request.n_trials,
+        algorithms=request.algorithms,
     )
     return PipelineRunResponse(
         portfolio_id=request.portfolio_id,
@@ -134,6 +137,22 @@ def get_pipeline_runs(portfolio_id: str):
 @app.get("/pipeline/logs", response_model=PipelineLogsResponse)
 def get_pipeline_logs(since: int = 0):
     return PipelineLogsResponse(entries=get_recent_logs(since))
+
+
+@app.get("/pipeline/progress/{portfolio_id}", response_model=PipelineProgressResponse)
+def get_pipeline_progress(portfolio_id: str):
+    try:
+        get_portfolio(portfolio_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    progress = get_progress(portfolio_id)
+    if progress is None:
+        return PipelineProgressResponse(
+            portfolio_id=portfolio_id, active=False, fraction_done=0.0, elapsed_seconds=0.0
+        )
+    progress.pop("portfolio", None)
+    return PipelineProgressResponse(portfolio_id=portfolio_id, **progress)
 
 
 @app.get("/health", response_model=HealthResponse)

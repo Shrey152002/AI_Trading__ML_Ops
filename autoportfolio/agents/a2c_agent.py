@@ -2,8 +2,9 @@
 from typing import Optional
 
 from stable_baselines3 import A2C
+from stable_baselines3.common.callbacks import BaseCallback
 
-from agents.base_agent import BaseAgent, MLflowLoggingCallback
+from agents.base_agent import BaseAgent, MLflowLoggingCallback, combine_callbacks
 
 
 class A2CAgent(BaseAgent):
@@ -11,7 +12,13 @@ class A2CAgent(BaseAgent):
     def name(self) -> str:
         return "A2C"
 
-    def train(self, env, total_timesteps: int, mlflow_run_id: Optional[str] = None) -> None:
+    def train(
+        self,
+        env,
+        total_timesteps: int,
+        mlflow_run_id: Optional[str] = None,
+        extra_callback: Optional[BaseCallback] = None,
+    ) -> None:
         params = {
             "learning_rate": 7e-4,
             "n_steps": 5,
@@ -19,7 +26,7 @@ class A2CAgent(BaseAgent):
             **self.hyperparams,
         }
         self.model = A2C("MlpPolicy", env, verbose=0, **params)
-        callback = MLflowLoggingCallback(log_freq=1000)
+        callback = combine_callbacks(MLflowLoggingCallback(log_freq=1000), extra_callback)
         self.model.learn(total_timesteps=total_timesteps, callback=callback)
 
     def load(self, path: str) -> None:

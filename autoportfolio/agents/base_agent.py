@@ -6,7 +6,7 @@ from typing import Optional
 
 import mlflow
 import numpy as np
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,12 @@ class MLflowLoggingCallback(BaseCallback):
         return True
 
 
+def combine_callbacks(*callbacks: Optional[BaseCallback]) -> BaseCallback:
+    """Combines the always-on MLflow logging callback with an optional extra one
+    (e.g. progress reporting) into a single SB3 callback."""
+    return CallbackList([cb for cb in callbacks if cb is not None])
+
+
 class BaseAgent(ABC):
     """Common interface implemented by PPO/A2C/SAC/DDPG wrappers around stable-baselines3."""
 
@@ -52,7 +58,13 @@ class BaseAgent(ABC):
         ...
 
     @abstractmethod
-    def train(self, env, total_timesteps: int, mlflow_run_id: Optional[str] = None) -> None:
+    def train(
+        self,
+        env,
+        total_timesteps: int,
+        mlflow_run_id: Optional[str] = None,
+        extra_callback: Optional[BaseCallback] = None,
+    ) -> None:
         ...
 
     def predict(self, observation: np.ndarray, deterministic: bool = True) -> np.ndarray:

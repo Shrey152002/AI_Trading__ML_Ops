@@ -1,6 +1,6 @@
 """Optuna-based hyperparameter search for each RL algorithm, optimizing validation Sharpe."""
 import logging
-from typing import Type
+from typing import Callable, Optional, Type
 
 import optuna
 from optuna.trial import Trial
@@ -62,11 +62,14 @@ def run_hyperopt(
     val_env: PortfolioEnv,
     n_trials: int = 20,
     search_timesteps: int = 5000,
+    on_trial_done: Optional[Callable[[int], None]] = None,
 ) -> tuple[dict, float]:
     """Runs an Optuna study maximizing validation-window Sharpe for one algorithm.
 
     Each trial trains a fresh agent for `search_timesteps` (a reduced budget for search
     speed) and scores it on val_env. Returns the best hyperparameter dict and its Sharpe.
+    `on_trial_done`, if given, is called with the 1-based count of trials completed so far —
+    used to report live progress while the search is running.
     """
     if algo_name not in SEARCH_SPACES:
         raise ValueError(f"No search space defined for algorithm '{algo_name}'")
@@ -84,8 +87,14 @@ def run_hyperopt(
             logger.warning("Trial failed for %s with params %s: %s", algo_name, params, exc)
             return -10.0
 
+    def trial_callback(_study: optuna.Study, trial: Trial) -> None:
+        if on_trial_done is not None:
+            on_trial_done(trial.number + 1)
+
     study = optuna.create_study(direction="maximize", study_name=f"{algo_name}_hyperopt")
-    study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
+    study.optimize(
+        objective, n_trials=n_trials, show_progress_bar=False, callbacks=[trial_callback]
+    )
 
     logger.info(
         "Hyperopt for %s finished: best_sharpe=%.4f, best_params=%s",

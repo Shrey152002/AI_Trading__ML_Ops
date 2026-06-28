@@ -52,6 +52,7 @@ class PipelineRunRequest(BaseModel):
     portfolio_id: str
     total_timesteps: int = 100_000
     n_trials: int = 20
+    algorithms: Optional[list[Literal["PPO", "A2C", "SAC", "DDPG"]]] = None
 
 
 class PipelineRunResponse(BaseModel):
@@ -108,3 +109,20 @@ class PipelineLogEntry(BaseModel):
 
 class PipelineLogsResponse(BaseModel):
     entries: list[PipelineLogEntry]
+
+
+class AlgoProgressEntry(BaseModel):
+    phase: str
+    trial: int
+    n_trials: int
+    steps_done: int
+    steps_total: int
+
+
+class PipelineProgressResponse(BaseModel):
+    portfolio_id: str
+    active: bool
+    fraction_done: float
+    elapsed_seconds: float
+    eta_seconds: Optional[float] = None
+    algorithms: dict[str, AlgoProgressEntry] = Field(default_factory=dict)

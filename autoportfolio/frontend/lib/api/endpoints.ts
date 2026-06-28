@@ -2,6 +2,7 @@ import { apiGet, apiPost } from "./client";
 import {
   healthResponseSchema,
   pipelineLogsResponseSchema,
+  pipelineProgressResponseSchema,
   pipelineRunResponseSchema,
   pipelineRunsResponseSchema,
   portfolioHistoryResponseSchema,
@@ -12,6 +13,7 @@ import {
 import type {
   HealthResponse,
   PipelineLogsResponse,
+  PipelineProgressResponse,
   PipelineRunRequest,
   PipelineRunResponse,
   PipelineRunsResponse,
@@ -54,4 +56,8 @@ export function getPipelineRuns(portfolioId: string): Promise<PipelineRunsRespon
 
 export function getPipelineLogs(since: number): Promise<PipelineLogsResponse> {
   return apiGet(`/pipeline/logs?since=${since}`, pipelineLogsResponseSchema);
+}
+
+export function getPipelineProgress(portfolioId: string): Promise<PipelineProgressResponse> {
+  return apiGet(`/pipeline/progress/${portfolioId}`, pipelineProgressResponseSchema);
 }

@@ -3,13 +3,17 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from multiprocessing import Manager
 from pathlib import Path
+from typing import Optional
 
+from agents import AGENT_REGISTRY
 from config import get_portfolio, list_portfolio_names
 from data.ingestion import download_portfolio_data, load_cached_portfolio_data
 from data.validation import DataValidationError, validate_portfolio_data
 from drift.detector import check_drift
 from feature_store.store import compute_and_store
+from monitoring.progress_state import register_run
 from registry.model_registry import (
     archive_old_versions,
     get_production_model,
@@ -20,6 +24,7 @@ from registry.model_registry import (
 from reports.generator import generate_report
 from training.benchmark import run_episode
 from training.env_utils import build_envs
+from training.progress import DEFAULT_SEARCH_TIMESTEPS, init_progress_state
 from training.trainer import train_portfolio
 
 logger = logging.getLogger(__name__)
@@ -55,6 +60,7 @@ def run_nightly_pipeline(
     total_timesteps: int = 100_000,
     n_trials: int = 20,
     lookback_years: int = 3,
+    algorithms: Optional[list[str]] = None,
 ) -> dict:
     """Runs the full nightly lifecycle for one portfolio. Returns a status record."""
     started_at = datetime.now(timezone.utc)
@@ -102,9 +108,31 @@ def run_nightly_pipeline(
         _append_pipeline_run(record)
         return record
 
-    # 5. Train all 4 agents
-    train_result = train_portfolio(portfolio_name, total_timesteps=total_timesteps, n_trials=n_trials)
-    record["steps"].append({"step": "train", "winner": train_result["winner_algorithm"], "metrics": train_result["winner_metrics"]})
+    # 5. Train the selected agents (default: all four), in parallel worker processes.
+    # The progress state is created and registered here, before training starts, so a
+    # GET /pipeline/progress request right after triggering the run sees "pending" rather
+    # than nothing — train_portfolio reuses this exact object instead of creating its own.
+    algos = algorithms or list(AGENT_REGISTRY.keys())
+    manager = Manager()
+    shared_state = init_progress_state(
+        manager, portfolio_name, algos, n_trials, total_timesteps, DEFAULT_SEARCH_TIMESTEPS
+    )
+    register_run(portfolio_name, shared_state)
+    train_result = train_portfolio(
+        portfolio_name,
+        total_timesteps=total_timesteps,
+        n_trials=n_trials,
+        algorithms=algos,
+        shared_state=shared_state,
+    )
+    record["steps"].append(
+        {
+            "step": "train",
+            "winner": train_result["winner_algorithm"],
+            "metrics": train_result["winner_metrics"],
+            "algorithms": algos,
+        }
+    )
 
     # 6. Benchmark + promote
     previous_metrics = None

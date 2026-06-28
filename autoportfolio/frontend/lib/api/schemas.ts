@@ -86,3 +86,20 @@ export const pipelineLogEntrySchema = z.object({
 export const pipelineLogsResponseSchema = z.object({
   entries: z.array(pipelineLogEntrySchema),
 });
+
+export const algoProgressEntrySchema = z.object({
+  phase: z.string(),
+  trial: z.number(),
+  n_trials: z.number(),
+  steps_done: z.number(),
+  steps_total: z.number(),
+});
+
+export const pipelineProgressResponseSchema = z.object({
+  portfolio_id: z.string(),
+  active: z.boolean(),
+  fraction_done: z.number(),
+  elapsed_seconds: z.number(),
+  eta_seconds: z.number().nullable(),
+  algorithms: z.record(z.string(), algoProgressEntrySchema),
+});

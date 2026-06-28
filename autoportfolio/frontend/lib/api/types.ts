@@ -1,5 +1,7 @@
 export type RiskAppetite = "conservative" | "moderate" | "aggressive";
 
+export type Algorithm = "PPO" | "A2C" | "SAC" | "DDPG";
+
 export interface RecommendationRequest {
   portfolio_id: string;
   current_holdings: Record<string, number>;
@@ -43,6 +45,7 @@ export interface PipelineRunRequest {
   portfolio_id: string;
   total_timesteps?: number;
   n_trials?: number;
+  algorithms?: Algorithm[] | null;
 }
 
 export interface PipelineRunResponse {
@@ -98,4 +101,21 @@ export interface PipelineLogEntry {
 
 export interface PipelineLogsResponse {
   entries: PipelineLogEntry[];
+}
+
+export interface AlgoProgressEntry {
+  phase: string;
+  trial: number;
+  n_trials: number;
+  steps_done: number;
+  steps_total: number;
+}
+
+export interface PipelineProgressResponse {
+  portfolio_id: string;
+  active: boolean;
+  fraction_done: number;
+  elapsed_seconds: number;
+  eta_seconds: number | null;
+  algorithms: Record<string, AlgoProgressEntry>;
 }

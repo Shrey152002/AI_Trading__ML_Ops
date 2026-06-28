@@ -195,3 +195,38 @@ def test_pipeline_logs_endpoint_respects_since_cursor(client):
     messages = [e["message"] for e in response.json()["entries"]]
     assert "second" in messages
     assert "first" not in messages
+
+
+def test_pipeline_progress_endpoint_idle_when_no_run_active(client):
+    response = client.get(f"/pipeline/progress/{PORTFOLIO_ID}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["active"] is False
+    assert body["fraction_done"] == 0.0
+
+
+def test_pipeline_progress_endpoint_unknown_portfolio_returns_404(client):
+    response = client.get("/pipeline/progress/does_not_exist")
+    assert response.status_code == 404
+
+
+def test_pipeline_progress_endpoint_reports_active_run(client):
+    from multiprocessing import Manager
+
+    import monitoring.progress_state as progress_state_module
+    from training.progress import init_progress_state, mark_phase
+
+    manager = Manager()
+    state = init_progress_state(
+        manager, PORTFOLIO_ID, ["PPO", "A2C"], n_trials=10, total_timesteps=1000, search_timesteps=100
+    )
+    mark_phase(state, "PPO", phase="final_train", steps_done=1000, trial=10)
+    progress_state_module.register_run(PORTFOLIO_ID, state)
+
+    response = client.get(f"/pipeline/progress/{PORTFOLIO_ID}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["active"] is True
+    assert body["algorithms"]["PPO"]["phase"] == "final_train"
+    assert body["algorithms"]["A2C"]["phase"] == "pending"
+    assert 0 < body["fraction_done"] < 1
